@@ -12,44 +12,38 @@ warnings.filterwarnings('ignore')
 st.sidebar.markdown('''# Sales Analysis''')
 
 #Read in dataset
-data = pd.read_csv('./sales_data.csv')
+@st.cache(allow_output_mutation=True)
+def load_data():
+    return pd.read_csv('./sales_data.csv')
 
-#-----------------------------------DATA CLEANING---------------------------------------------------
-# Drop rows with missing data
-data.dropna(inplace=True)
-#Remove the rows containing a duplicate of the header
-data = data[data['Product']!='Product']
-#Remove the Order ID column
-data.drop(columns='Order ID', inplace=True)
-# The "order date" is provide in type string, it needs to be converted to datetime format that can be Analysed
-data['Order Date'] = data['Order Date'].apply(lambda x: "{0}:00".format(x))
-data['Order Date'] = data['Order Date'].apply(lambda x: f"{x[:6] +'20' + x[6:]}")
+data = load_data()
+
+#Define tools to add on the plots
+TOOLS = 'pan,zoom_out,box_zoom,reset,save'
+#----------------------DATA CLEANING-------------------------------------------
 data['Order Date'] = pd.to_datetime(data['Order Date'])
-#convert datatypes for the Quantity Ordered and Price Each columns from string to numeric
-data['Quantity Ordered'] = pd.to_numeric(data['Quantity Ordered'])
-data['Price Each'] = pd.to_numeric(data['Quantity Ordered'])
-
-#-----------------------------------FEATURE ENGINEERING---------------------------------------------------
+#----------------------FEATURE ENGINEERING-------------------------------------
 #Add columns for date, hour, month,
 data['hour']=data['Order Date'].dt.hour
-data['month']=data['Order Date'].dt.month
 data['Date']=data['Order Date'].dt.date
+data['month']=data['Order Date'].dt.month
 #Add a column for sales (sales = Quantity Ordered * Price Each)
 data['Sales'] = data['Quantity Ordered'] * data['Price Each']
-#Add a column for city
-data['City'] = data['Purchase Address'].apply(lambda x: f"{x.split(',')[1] +', ' + x.split(',')[2].split(' ')[1]}")
 
-status = st.sidebar.radio('',('Home','What were the best and worst months for sales?',
+status = st.sidebar.radio('',('Home',
+                              'What were the best and worst months for sales?',
                               'Which cities had the highest and lowest sales?',
-                              'What is the peak purchasing time?','What is the demand for each product?'))
+                              'What is the peak purchasing time?',
+                              'What is the demand for each product?',
+                              'Sales trend analysis'))
 
 st.sidebar.markdown('''
 ### Developed by
 [Mugumya Twarik Harouna](https://www.linkedin.com/in/twarik/)
 
-[Github](http://github.com/twarik/)''')
+Source code available [here](https://github.com/twarik/Sales-Data-Analysis)''')
 
-#----------------------1. What were the best and worst months for sales?---------------------------
+#----------------1. What were the best and worst months for sales?------------------
 if status == 'What were the best and worst months for sales?':
     grouped_months = data.groupby('month').sum()
     months = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
@@ -57,23 +51,21 @@ if status == 'What were the best and worst months for sales?':
     grouped_months.reset_index(inplace=True)
     grouped_months.month = months
 
-    '''
+    st.markdown('''
     ## What was the best/worst month for sales?
     ### How much was earned that month?
-    '''
+    ''')
     source = ColumnDataSource(grouped_months)
 
-    TOOLS = 'pan,wheel_zoom,zoom_in,zoom_out,box_zoom,reset,save'
-
     p = figure(tools = TOOLS,
-        #title='Total Sales per hour',
         x_axis_label='Months',
         y_axis_label='Sales in USD ($)',
         height=400,
         x_range=months
         )
 
-    p.vbar(x='month', top='Sales', width=0.9, source=source, fill_color=factor_cmap('month', palette=Paired12, factors=grouped_months['month']))
+    p.vbar(x='month', top='Sales', width=0.9, source=source,
+       fill_color=factor_cmap('month', palette=Paired12[::-1], factors=grouped_months['month']))
 
     hover = HoverTool()
     hover.tooltips=[
@@ -83,28 +75,28 @@ if status == 'What were the best and worst months for sales?':
     p.add_tools(hover)
     st.bokeh_chart(p, use_container_width=True)
 
-#-----------------------------------2. Which cities had the highest and lowest sales?---------------------------------------------------
+#-------2. Which cities had the highest and lowest sales?--------------------
 elif status == 'Which cities had the highest and lowest sales?':
     group_city = data.groupby('City').sum()
     group_city.reset_index(inplace=True)
 
+    st.markdown(
     '''
     ## Which cities had the highest and lowest sales?
     ### How much was earned from every city?
     '''
+    )
     source = ColumnDataSource(group_city)
 
-    TOOLS = 'pan,wheel_zoom,zoom_in,zoom_out,box_zoom,reset,save'
-
     p = figure(tools = TOOLS,
-        #title='Total Sales per hour',
         x_axis_label='Cities',
         y_axis_label='Sales in USD ($)',
         height=400,
         x_range=group_city['City']
         )
 
-    p.vbar(x='City', top='Sales', width=0.9, source=source, fill_color=factor_cmap('City', palette=Paired12, factors=group_city['City']))
+    p.vbar(x='City', top='Sales', width=0.9, source=source,
+       fill_color=factor_cmap('City', palette=Paired12, factors=group_city['City']))
 
     hover = HoverTool()
     hover.tooltips=[
@@ -116,7 +108,7 @@ elif status == 'Which cities had the highest and lowest sales?':
 
     st.bokeh_chart(p, use_container_width=True)
 
-#-----------------------------------3. What is the peak purchasing time?---------------------------------------------------
+#-------------------3. What is the peak purchasing time?-----------------------
 elif status == 'What is the peak purchasing time?':
     group_hour = data.groupby('hour').count()
     group_hour.reset_index(inplace=True)
@@ -124,10 +116,7 @@ elif status == 'What is the peak purchasing time?':
 
     '## What is the peak purchasing time?'
 
-    TOOLS = 'pan,wheel_zoom,zoom_in,zoom_out,box_zoom,reset,save'
-
     p = figure(tools = TOOLS,
-        #title='Total number of transactions per hour',
         title='Daily purchase profile',
         x_axis_label='Hours',
         y_axis_label='No. of transactions',
@@ -146,29 +135,25 @@ elif status == 'What is the peak purchasing time?':
 
     st.bokeh_chart(p, use_container_width=True)
 
-    t = group_hour.Sales.argmax()
+    t = group_hour.Sales.idxmax()
 
     'The peak purchasing time is %sh' %t
 
-#-----------------------------------4. What is the demand for each product?---------------------------------------------------
+#--------------4. What is the demand for each product?--------------------------
 elif status == 'What is the demand for each product?':
     group_product = data.groupby('Product').count()
     group_product.reset_index(inplace=True)
-    #group_product['radius'] = group_product['Sales']/30000
     group_product['radius'] = group_product['Sales']/group_product['Sales'].max()
     products = group_product['Product'].tolist()
 
     source = ColumnDataSource(group_product)
 
-    '#### What is the demand for each product?'
-
-    TOOLS = 'pan,wheel_zoom,zoom_in,zoom_out,box_zoom,reset,save'
+    '## What is the demand for each product?'
 
     p = figure(tools = TOOLS,
-        #title='Total number of products sold',
         x_axis_label='Product',
         y_axis_label='Products sold annually',
-        height=450,
+        height=500,
         x_range=products,
         )
 
@@ -185,15 +170,22 @@ elif status == 'What is the demand for each product?':
     p.xaxis.major_label_orientation = "vertical"
     st.bokeh_chart(p, use_container_width=True)
 
-    multi_prod = st.multiselect('Type/Select product/s for trend analysis', (products))
+#------------------------5. 'Sales trend analysis'---------------------------
+elif status == 'Sales trend analysis':
+    group_product = data.groupby('Product').count()
+    group_product.reset_index(inplace=True)
+    products = group_product['Product'].tolist()
 
-    TOOLS = 'pan,wheel_zoom,zoom_in,zoom_out,box_zoom,reset,save'
+    source = ColumnDataSource(group_product)
+
+    '## Sales trend analysis by product'
+
+    multi_prod = st.multiselect('Type/select product/s for trend analysis', (products))
 
     p = figure(tools = TOOLS,
-        #title='Trend of sales generation',
         x_axis_label='Date',
         y_axis_label='Sales',
-        height=300,# width=950,
+        height=300,
         x_axis_type='datetime')
 
     for idx, val in enumerate(multi_prod):
@@ -215,6 +207,7 @@ elif status == 'What is the demand for each product?':
     p.legend.orientation = "vertical"
     if len(multi_prod) !=0:
         p.add_layout(p.legend[0], 'right')
+
     st.bokeh_chart(p, use_container_width=True)
 
 else:
@@ -226,20 +219,16 @@ else:
     '#### Time series of the sales made on a daily basis during 2019'
     source = ColumnDataSource(daily)
 
-    TOOLS = 'pan,wheel_zoom,zoom_in,zoom_out,box_zoom,reset,save'
-
     p = figure(tools = TOOLS,
-        #title='Trend of sales generation',
         x_axis_label='Date',
         y_axis_label='Sales',
-        height=300,# width=950,
+        height=300,
         x_axis_type='datetime')
 
     p.line(x='Date', y='Sales', source=source)
 
     hover = HoverTool()
     hover.tooltips=[
-        #('Product', "@{Price Each}"),
         ('Sales', "$@Sales"),
     ]
     p.add_tools(hover)
@@ -247,9 +236,9 @@ else:
     st.bokeh_chart(p, use_container_width=True)
 
     if st.checkbox('View table'):
-        '#### The table below contains the annual sales data'
+        '#### Table below shows a sample of the sales data'
         variables = ['Product', 'Quantity Ordered', 'Price Each', 'Order Date', 'City']
-        st.dataframe(data.reset_index()[variables].rename(columns={"Quantity Ordered": "Qty", "Price Each": "Price"}))
+        st.dataframe(data[variables].rename(columns={"Quantity Ordered": "Qty", "Price Each": "Price"}).sample(100))
 
 hide_streamlit_style = """
             <style>
@@ -257,4 +246,4 @@ hide_streamlit_style = """
             footer {visibility: hidden;}
             </style>
             """
-st.markdown(hide_streamlit_style, unsafe_allow_html=True) 
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
