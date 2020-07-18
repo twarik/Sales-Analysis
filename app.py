@@ -180,7 +180,7 @@ elif status == 'Sales trend analysis':
 
     '## Sales trend analysis by product'
 
-    multi_prod = st.multiselect('Type/select product/s for trend analysis', (products))
+    multi_prod = st.multiselect('Type/select product(s) for trend analysis', (products))
 
     p = figure(tools = TOOLS,
         x_axis_label='Date',
