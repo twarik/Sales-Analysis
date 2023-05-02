@@ -14,7 +14,8 @@ TOOLS = 'pan,zoom_out,box_zoom,reset,save'
 
 st.sidebar.markdown('''# Sales Analysis''')
 
-@st.cache(allow_output_mutation=True)
+#@st.cache_data(allow_output_mutation=True)
+@st.cache_data()
 def load_data():
     '''
     Function to read-in the dataset
@@ -72,7 +73,7 @@ Source code available [here](https://github.com/twarik/Sales-Data-Analysis)''')
 
 #----------------1. What were the best and worst months for sales?------------------
 if status == 'What were the best and worst months for sales?':
-    grouped_months = data.groupby('month').sum()
+    grouped_months = data.groupby(by=["month"]).sum()
     months = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
             'August', 'September', 'October', 'November', 'December']
     grouped_months.reset_index(inplace=True)
@@ -95,7 +96,7 @@ if status == 'What were the best and worst months for sales?':
 
 #-------2. Which cities had the highest and lowest sales?--------------------
 elif status == 'Which cities had the highest and lowest sales?':
-    group_city = data.groupby('City').sum()
+    group_city = data.groupby(by=["City"]).sum()
     group_city.reset_index(inplace=True)
     source = ColumnDataSource(group_city)
 
@@ -116,7 +117,7 @@ elif status == 'Which cities had the highest and lowest sales?':
 
 #-------------------3. What is the peak purchasing time?-----------------------
 elif status == 'What is the peak purchasing time?':
-    group_hour = data.groupby('hour').count()
+    group_hour = data.groupby(by=["hour"]).count()
     group_hour.reset_index(inplace=True)
     source = ColumnDataSource(group_hour)
 
@@ -135,7 +136,7 @@ elif status == 'What is the peak purchasing time?':
 
 #--------------4. What is the demand for each product?--------------------------
 elif status == 'What is the demand for each product?':
-    group_product = data.groupby('Product').count()
+    group_product = data.groupby(by=["Product"]).count()
     group_product.reset_index(inplace=True)
     group_product['radius'] = group_product['Sales']/group_product['Sales'].max()
     products = group_product['Product'].tolist()
@@ -156,7 +157,7 @@ elif status == 'What is the demand for each product?':
 
 #------------------------5. 'Sales trend analysis'---------------------------
 elif status == 'Sales trend analysis':
-    group_product = data.groupby('Product').count()
+    group_product = data.groupby(by=["Product"]).count()
     group_product.reset_index(inplace=True)
     products = group_product['Product'].tolist()
 
@@ -167,7 +168,7 @@ elif status == 'Sales trend analysis':
 
     for idx, val in enumerate(multi_prod):
         product_df = data.loc[data['Product'] == val]
-        product_df=product_df.groupby('Date').sum()
+        product_df=product_df.groupby(by=["Date"]).sum()
         product_df.reset_index(inplace=True)
         source = ColumnDataSource(product_df)
         p.line(x='Date', y='Sales', legend_label=val, line_color=Category20_20[idx], source=source)
@@ -183,7 +184,7 @@ elif status == 'Sales trend analysis':
 else:
     st.title("Analysis of sales data")
 
-    daily=data.groupby('Date').sum()
+    daily=data.groupby(by=["Date"]).sum()
     daily.reset_index(inplace=True)
     source = ColumnDataSource(daily)
 
