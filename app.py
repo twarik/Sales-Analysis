@@ -8,6 +8,8 @@ from bokeh.transform import factor_cmap
 
 import warnings
 warnings.filterwarnings('ignore')
+#warnings.filterwarnings(action='ignore', category=DeprecationWarning, message='`np.bool` is a deprecated alias')
+
 
 #Define tools to add on the plots
 TOOLS = 'pan,zoom_out,box_zoom,reset,save'
